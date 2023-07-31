@@ -1,6 +1,6 @@
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
 from django.views.generic.list import ListView
-from django.http import HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.contrib.auth.decorators import login_required
 from .models import Post
 
@@ -33,8 +33,13 @@ def post_create_view(request):
         )
         return redirect('index')
 
+@login_required
 def post_update_view(request, id):
-    post = Post.objects.get(id = id)
+    # post = Post.objects.get(id = id)
+     # 500 에러 페이지로 이동을 404페이지로 가도록 해줌
+    post = get_object_or_404(Post, id= id, writer = request.user)
+    if request.user != post.writer:
+        return Http404('잘못된 접근입니다.')
     if request.method == 'GET':
         context = {'post' : post}
         return render(request, 'posts/post_form.html', context)
@@ -43,7 +48,7 @@ def post_update_view(request, id):
         content = request.POST.get('content')
 
         if new_image:
-            post.image.delete()
+            post.image.delete() # 기존의 이미지 삭제 후 수정된 이미지 추가
             post.image = new_image
 
         post.content = content
@@ -62,8 +67,19 @@ def post_detail_view(request, id):
     }
     return render(request, 'posts/post_detail.html', context)
 
+@login_required
 def post_delete_view(request, id):
-    return render(request, 'posts/post_confirm.delete.html')
+    post = get_object_or_404(Post, id= id, writer = request.user)
+    if request.user != post.writer:
+        return Http404('잘못된 접근입니다.')
+    
+    if request.method == 'GET':
+        context = { 'post' : post }
+        return render(request, 'posts/post_confirm.delete.html', context)
+    else:
+        post.delete()
+        return redirect('index')
+    
 
 def url_view(request):
     print('url_view()')
