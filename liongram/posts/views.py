@@ -3,6 +3,7 @@ from django.views.generic.list import ListView
 from django.http import Http404, HttpResponse, JsonResponse
 from django.contrib.auth.decorators import login_required
 from .models import Post
+from .forms import PostBaseForm, PostCreateForm
 
 def index(request):
     post_list = Post.objects.all().order_by('-created_at') # Post 전체 데이터 조회
@@ -33,6 +34,23 @@ def post_create_view(request):
         )
         return redirect('index')
 
+def post_create_form_view(request):
+    if request.method == 'GET':
+        form = PostCreateForm()
+        context = {'form' : form}
+        return render(request, 'posts/post_form2.html', context)
+    else:
+        form = PostCreateForm(request.POST, request.FILES)
+        if form.is_valid(): # cleaned_data쓸려면 이거 호출 해야 함
+            Post.objects.create(
+                image = form.cleaned_data['image'],
+                content = form.cleaned_data['content'],
+                writer = request.user
+            )
+        else:
+            return redirect('posts:post-create')
+        return redirect('index')
+    
 @login_required
 def post_update_view(request, id):
     # post = Post.objects.get(id = id)
